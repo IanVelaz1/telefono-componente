@@ -1,0 +1,235 @@
+<link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="../music-component/music-component.html">
+<link rel="import" href="../paper-button/paper-button.html">
+
+<dom-module id="telefono-componente">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      .body-container{
+        width: 400px;
+        margin: 0 auto;
+        border: 1px solid black;
+        padding: 30px;
+        border-radius: 15px;
+      }
+    </style>
+    <div class="body-container">
+        <battery-component battery="[[timerValue]]"></battery-component>
+        <br>
+        <music-component id="media-player" list-request-url="https://music-server-jansolote.herokuapp.com/tracks" song-url="https://music-server-jansolote.herokuapp.com/track/"></music-component>
+        <br>
+        <charger-component on-phone-charging="chargePhone"></charger-component>
+    </div>
+    
+  </template>
+
+  <script>
+    /**
+     * `telefono-componente`
+     * 
+     *
+     * @customElement
+     * @polymer
+     * @demo demo/index.html
+     */
+    class TelefonoComponente extends Polymer.Element {
+      static get is() {
+        return 'telefono-componente';
+      }
+      static get properties() {
+        return {
+          timerValue: {
+            type: Number,
+            value: 100
+          },
+          intervalSong: {
+            type: Event
+          }
+        };
+      }
+
+      connectedCallback() {
+        super.connectedCallback();
+        this.songIsPlaying();
+        this.songPaused();
+      }
+
+      songIsPlaying() {
+        const mediaPlayer = this.shadowRoot.querySelector("#media-player");
+        mediaPlayer.addEventListener("song-playing", (event) => {
+          console.log(event.detail);
+          this.timerChanged();
+
+        })
+      }
+
+      songPaused() {
+        const mediaPlayer = this.shadowRoot.querySelector("#media-player");
+        mediaPlayer.addEventListener("song-paused", (event) => {
+          this.stopTimer();
+        });
+      }
+
+      timerChanged() {
+        const mediaPlayer = this.shadowRoot.querySelector("#media-player");
+        this.intervalSong = setInterval(() => {
+          this.set("timerValue", this.timerValue - 1);
+          if (this.timerValue === 0) {
+            mediaPlayer.pauseSong();
+            clearInterval(this.intervalSong);
+
+          }
+        }, 1000);
+      }
+
+      stopTimer() {
+        clearInterval(this.intervalSong);
+      }
+
+      chargePhone(event){
+          if(this.timerValue<100){
+            this.set("timerValue",this.timerValue+event.detail);
+          }
+      }
+
+    }
+
+    window.customElements.define(TelefonoComponente.is, TelefonoComponente);
+  </script>
+</dom-module>
+
+
+<dom-module id="battery-component">
+  <template>
+    <style>
+      :host {
+        display: block;
+       
+      }
+
+      .charged {
+        width: 80%;
+        border: 1px solid black;
+        height: 50px;
+        background: linear-gradient(green 30%, green 5%);
+        text-align: center;
+        margin: 0 auto;
+      }
+
+      .empty {
+        width: 80%;
+        border: 1px solid black;
+        height: 50px;
+        background: red;
+        color: white;
+        text-align: center;
+        margin: 0 auto;
+      }
+    </style>
+    <div class$="[[emptyBattery]] [[chargedBattery]]">
+      <h3>[[battery]]</h3>
+    </div>
+  </template>
+
+  <script>
+    class BatteryComponent extends Polymer.Element {
+      static get is() {
+        return "battery-component"
+      }
+
+      static get properties() {
+        return {
+          battery: {
+            type: Number,
+            value: 0,
+            observer: "batteryChanged"
+          },
+          emptyBattery: {
+            type: String,
+            value: ""
+          },
+          chargedBattery: {
+            type: String,
+            value: ""
+          }
+        }
+      }
+
+      batteryChanged() {
+        if (this.battery >= 40) {
+          this.set("emptyBattery", "");
+          this.set("chargedBattery", "charged");
+        } else {
+          this.set("emptyBattery", "empty");
+          this.set("chargedBattery", "");
+        }
+      }
+
+
+
+    }
+    window.customElements.define(BatteryComponent.is, BatteryComponent);
+  </script>
+</dom-module>
+
+
+
+<dom-module id="charger-component">
+  <template>
+    <style>
+      .btn-container {
+        width: 100%;
+        text-align: center;
+      }
+    </style>
+    <div class="btn-container" hidden$="[[isCharging]]">
+      <paper-button on-tap="chargePhone">Charge the phone</paper-button>
+    </div>
+    <div class="btn-container" hidden$="[[!isCharging]]">
+      <paper-button on-tap="chargePhone">Stop charging</paper-button>
+    </div>
+  </template>
+  <script>
+    class ChargerComponent extends Polymer.Element {
+      static get is() {
+        return "charger-component"
+      }
+
+      static get properties() {
+        return {
+          chargeAmount: {
+            type: Number,
+            value: 2
+          },
+          chargerInterval: {
+            type: Event
+          },
+          isCharging: {
+            type: Boolean,
+            value: false
+          }
+        }
+      }
+
+      chargePhone() {
+        if (this.isCharging === false) {
+          this.chargerInterval = setInterval(() => {
+            this.dispatchEvent(new CustomEvent("phone-charging", {
+              bubbles: false,
+              composed: false,
+              detail: this.chargeAmount
+            }))
+          }, 1000);
+        } else {
+          clearInterval(this.chargerInterval);
+        }
+        this.set("isCharging", !this.isCharging);
+      }
+
+    }
+    window.customElements.define(ChargerComponent.is, ChargerComponent)
+  </script>
+</dom-module>
